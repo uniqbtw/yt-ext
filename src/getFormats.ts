@@ -60,18 +60,7 @@ export const getFormats = async (
         );
     }
 
-    options = mergeObj(
-        {
-            requestOptions: {
-                headers: {
-                    "User-Agent": constants.requestOptions.userAgent,
-                    Cookie: cookieJar.cookieHeaderValue(),
-                },
-                maxRedirections: constants.requestOptions.maxRedirections,
-            },
-        },
-        options
-    );
+    options = mergeObj({}, options);
 
     const resolved: VideoFormat[] = [];
 

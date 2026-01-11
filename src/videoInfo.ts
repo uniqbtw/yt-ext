@@ -149,18 +149,7 @@ export const videoInfo = async (
         );
     }
 
-    options = mergeObj(
-        {
-            requestOptions: {
-                headers: {
-                    "User-Agent": constants.requestOptions.userAgent,
-                    Cookie: cookieJar.cookieHeaderValue(),
-                },
-                maxRedirections: constants.requestOptions.maxRedirections,
-            },
-        },
-        options
-    );
+    options = mergeObj({}, options);
 
     if (!url.startsWith("http")) {
         url = constants.urls.video.base(url);

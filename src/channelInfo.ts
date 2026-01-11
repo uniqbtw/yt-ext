@@ -18,28 +18,23 @@ export interface ChannelVideo {
     title: string;
     id: string;
     url: string;
-    channel: {
-        name: string;
-        id: string;
-        url: string;
-    };
-    thumbnails: {
-        url: string;
-        width: number;
-        height: number;
-    }[];
+    thumbnail: string;
     duration: {
-        pretty: string;
         text: string;
+        seconds: number;
     };
-    views: {
+    views: string;
+}
+export interface ChannelShorts {
+    title: string;
+    id: string;
+    url: string;
+    thumbnail: string;
+    duration: {
         text: string;
-        pretty: string;
-        simpleText: string;
+        seconds: number;
     };
-    published: {
-        text: string;
-    };
+    views: string;
 }
 
 export interface ChannelInfo {
@@ -49,33 +44,14 @@ export interface ChannelInfo {
     rssUrl: string;
     vanityUrl: string;
     description: string;
-    subscribers: {
-        pretty: string;
-        text: string;
-    };
-    thumbnails: {
-        url: string;
-        width: number;
-        height: number;
-    }[];
-    banner: {
-        url: string;
-        width: number;
-        height: number;
-    }[];
-    tvBanner: {
-        url: string;
-        width: number;
-        height: number;
-    }[];
-    mobileBanner: {
-        url: string;
-        width: number;
-        height: number;
-    }[];
-    badges: string[];
+    subscribers: string;
+    thumbnails: string;
+    firstLink: string;
+    banner: string;
     tags: string[];
+    videosCount: number;
     videos: ChannelVideo[];
+    shorts: ChannelShorts[];
     unlisted: boolean;
     familySafe: boolean;
 }
@@ -98,14 +74,7 @@ export const channelInfo = async (
 
     options = mergeObj(
         {
-            requestOptions: {
-                headers: {
-                    "User-Agent": constants.requestOptions.userAgent,
-                    Cookie: cookieJar.cookieHeaderValue(),
-                },
-                maxRedirections: constants.requestOptions.maxRedirections,
-            },
-            includeVideos: false,
+            includeVideos: true,
         },
         options
     );
@@ -131,36 +100,43 @@ export const channelInfo = async (
         throw new Error(`Failed to parse data from webpage. (${err})`);
     }
 
+    const bannerCount =
+        initialData?.header.pageHeaderRenderer.content.pageHeaderViewModel
+            .banner.imageBannerViewModel.image.sources.length;
     const channel: ChannelInfo = {
         name: initialData?.metadata?.channelMetadataRenderer?.title,
         id: initialData?.metadata?.channelMetadataRenderer?.externalId,
         url: initialData?.metadata?.channelMetadataRenderer?.channelUrl,
         rssUrl: initialData?.metadata?.channelMetadataRenderer?.rssUrl,
         vanityUrl:
-            initialData?.microformat?.microformatDataRenderer?.vanityChannelUrl,
+            initialData?.header.pageHeaderRenderer.content.pageHeaderViewModel
+                .metadata.contentMetadataViewModel.metadataRows[0]
+                .metadataParts[0].text.content,
         description:
             initialData?.metadata?.channelMetadataRenderer?.description,
-        subscribers: {
-            pretty: initialData?.header?.c4TabbedHeaderRenderer
-                ?.subscriberCountText?.simpleText,
-            text: initialData?.header?.c4TabbedHeaderRenderer
-                ?.subscriberCountText?.accessibility?.accessibilityData?.label,
-        },
-        banner: initialData?.header?.c4TabbedHeaderRenderer?.banner?.thumbnails,
-        tvBanner:
-            initialData?.header?.c4TabbedHeaderRenderer?.tvBanner?.thumbnails,
-        mobileBanner:
-            initialData?.header?.c4TabbedHeaderRenderer?.mobileBanner
-                ?.thumbnails,
-        badges: initialData?.header?.c4TabbedHeaderRenderer?.badges
-            ?.map((x: any) => x?.metadataBadgeRenderer?.tooltip)
-            ?.filter((x: string) => x),
+        subscribers:
+            initialData?.header.pageHeaderRenderer.content.pageHeaderViewModel.metadata.contentMetadataViewModel.metadataRows[1].metadataParts[0].accessibilityLabel.split(
+                " "
+            )[0],
+        firstLink:
+            initialData?.header.pageHeaderRenderer.content.pageHeaderViewModel
+                .attribution.attributionViewModel.text.content,
+        banner: initialData?.header.pageHeaderRenderer.content
+            .pageHeaderViewModel.banner.imageBannerViewModel.image.sources[
+            bannerCount - 1
+        ].url,
         thumbnails:
-            initialData?.metadata?.channelMetadataRenderer?.avatar?.thumbnails,
+            initialData?.metadata?.channelMetadataRenderer.avatar?.thumbnails[0]
+                .url,
         tags: parseYoutubeKeywords(
             initialData?.metadata?.channelMetadataRenderer?.keywords ?? ""
         ),
+        videosCount:
+            initialData?.header.pageHeaderRenderer.content.pageHeaderViewModel.metadata.contentMetadataViewModel.metadataRows[1].metadataParts[1].text.content.split(
+                " "
+            )[0],
         videos: [],
+        shorts: [],
         unlisted: initialData?.microformat?.microformatDataRenderer?.unlisted,
         familySafe:
             initialData?.metadata?.channelMetadataRenderer?.isFamilySafe,
@@ -168,55 +144,111 @@ export const channelInfo = async (
 
     if (options.includeVideos) {
         initialData?.contents?.twoColumnBrowseResultsRenderer?.tabs
-            ?.find((x: any) => x?.tabRenderer?.title === "Home")
-            ?.tabRenderer?.content?.sectionListRenderer?.contents?.find(
-                (x: any) =>
-                    x?.itemSectionRenderer?.contents[0]?.shelfRenderer?.content
-                        ?.horizontalListRenderer?.items
-            )
-            ?.itemSectionRenderer?.contents[0]?.shelfRenderer?.content?.horizontalListRenderer?.items?.forEach(
-                ({ gridVideoRenderer: x }: any) => {
+            ?.find((x: any) => x?.tabRenderer?.title === "Videos")
+            ?.tabRenderer?.content?.richGridRenderer?.contents?.forEach(
+                (item: any) => {
+                    const value =
+                        item?.richItemRenderer?.content?.videoRenderer;
+                    const duration = value?.lengthText?.simpleText;
+                    let seconds;
+                    if (
+                        value?.lengthText?.simpleText.split(":").map(Number)
+                            .length === 3
+                    ) {
+                        seconds =
+                            value?.lengthText?.simpleText
+                                .split(":")
+                                .map(Number)[0] *
+                                3600 +
+                            value?.lengthText?.simpleText
+                                .split(":")
+                                .map(Number)[1] *
+                                60 +
+                            value?.lengthText?.simpleText
+                                .split(":")
+                                .map(Number)[2];
+                    } else {
+                        seconds =
+                            value?.lengthText?.simpleText
+                                .split(":")
+                                .map(Number)[0] *
+                                60 +
+                            value?.lengthText?.simpleText
+                                .split(":")
+                                .map(Number)[1];
+                    }
                     const video: ChannelVideo = {
-                        title: x?.title?.simpleText,
-                        id: x?.videoId,
-                        url:
-                            constants.urls.base +
-                            x?.navigationEndpoint?.commandMetadata
-                                ?.webCommandMetadata?.url,
-                        channel: {
-                            name: channel?.name,
-                            id: channel?.id,
-                            url: channel?.url,
-                        },
-                        thumbnails: x?.thumbnail?.thumbnails,
+                        title: value?.title?.runs[0].text,
+                        id: value?.videoId,
+                        url: `https://youtu.be/${value?.videoId}`,
+                        thumbnail:
+                            value?.thumbnail?.thumbnails[
+                                value?.thumbnail?.thumbnails.length - 1
+                            ].url,
                         duration: {
-                            pretty: x?.thumbnailOverlays?.find(
-                                (x: any) =>
-                                    x?.thumbnailOverlayTimeStatusRenderer
-                            )?.thumbnailOverlayTimeStatusRenderer?.text
-                                ?.simpleText,
-                            text: x?.thumbnailOverlays?.find(
-                                (x: any) =>
-                                    x?.thumbnailOverlayTimeStatusRenderer
-                            )?.thumbnailOverlayTimeStatusRenderer?.text
-                                ?.accessibility?.accessibilityData?.label,
+                            text: duration,
+                            seconds: seconds,
                         },
-                        views: {
-                            pretty: x?.shortViewCountText?.simpleText,
-                            text: x?.shortViewCountText?.accessibility
-                                ?.accessibilityData?.label,
-                            simpleText: x?.viewCountText?.simpleText,
-                        },
-                        published: {
-                            text: x?.publishedTimeText?.simpleText,
-                        },
+                        views: value?.viewCountText?.simpleText.split(" ")[0],
                     };
                     channel.videos.push(video);
                 }
             );
-    }
 
-    return channel;
+        initialData?.contents?.twoColumnBrowseResultsRenderer?.tabs
+            ?.find((x: any) => x?.tabRenderer?.title === "Shorts")
+            ?.tabRenderer?.content?.richGridRenderer?.contents?.forEach(
+                (item: any) => {
+                    const value =
+                        item?.richItemRenderer?.content?.videoRenderer;
+                    const duration = value?.lengthText?.simpleText;
+                    let seconds;
+                    if (
+                        value?.lengthText?.simpleText.split(":").map(Number)
+                            .length === 3
+                    ) {
+                        seconds =
+                            value?.lengthText?.simpleText
+                                .split(":")
+                                .map(Number)[0] *
+                                3600 +
+                            value?.lengthText?.simpleText
+                                .split(":")
+                                .map(Number)[1] *
+                                60 +
+                            value?.lengthText?.simpleText
+                                .split(":")
+                                .map(Number)[2];
+                    } else {
+                        seconds =
+                            value?.lengthText?.simpleText
+                                .split(":")
+                                .map(Number)[0] *
+                                60 +
+                            value?.lengthText?.simpleText
+                                .split(":")
+                                .map(Number)[1];
+                    }
+                    const shorts: ChannelVideo = {
+                        title: value?.title?.runs[0].text,
+                        id: value?.videoId,
+                        url: `https://youtu.be/${value?.videoId}`,
+                        thumbnail:
+                            value?.thumbnail?.thumbnails[
+                                value?.thumbnail?.thumbnails.length - 1
+                            ].url,
+                        duration: {
+                            text: duration,
+                            seconds: seconds,
+                        },
+                        views: value?.viewCountText?.simpleText.split(" ")[0],
+                    };
+                    channel.videos.push(shorts);
+                }
+            );
+    }
+    console.log(channel);
+    return initialData;
 };
 
 export default channelInfo;

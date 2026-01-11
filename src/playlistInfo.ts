@@ -62,18 +62,7 @@ export const playlistInfo = async (
         );
     }
 
-    options = mergeObj(
-        {
-            requestOptions: {
-                headers: {
-                    "User-Agent": constants.requestOptions.userAgent,
-                    Cookie: cookieJar.cookieHeaderValue(),
-                },
-                maxRedirections: constants.requestOptions.maxRedirections,
-            },
-        },
-        options
-    );
+    options = mergeObj({}, options);
 
     const id = url.match(constants.urls.playlist.getIdRegex)?.[2] ?? url;
     if (!url.startsWith("http")) {

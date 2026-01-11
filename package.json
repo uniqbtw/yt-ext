@@ -1,7 +1,7 @@
 {
-    "name": "youtube-ext",
-    "version": "1.1.25",
-    "description": "A simple YouTube scraper and downloader.",
+    "name": "yt-ext",
+    "version": "1.0.0",
+    "description": "A simple YouTube scraper.",
     "main": "dist/index.js",
     "files": [
         "dist"
@@ -24,12 +24,12 @@
     ],
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/zyrouge/node-youtube-ext.git"
+        "url": "git+https://github.com/uniqbtw/yt-ext.git"
     },
-    "author": "ZYROUGE",
+    "author": "uniqbtw",
     "license": "MIT",
     "bugs": {
-        "url": "https://github.com/zyrouge/node-youtube-ext/issues"
+        "url": "https://github.com/uniqbtw/yt-ext/issues"
     },
     "homepage": "youtube-ext.js.org",
     "devDependencies": {
